@@ -1,0 +1,35 @@
+# ==============================================================================
+# Git Ignore - Tech Challenge Fase 3 (Predição de Alfabetização)
+# ==============================================================================
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Caches e Ambientes Virtuais
+.venv/
+venv/
+env/
+ENV/
+.env
+
+# Jupyter Notebook Checkpoints
+.ipynb_checkpoints/
+*/.ipynb_checkpoints/*
+
+# Modelos Binários Pesados e Artefatos Serializados
+*.joblib
+*.pkl
+models_saved/*.joblib
+!models_saved/.gitkeep
+
+# Arquivos Temporários de Sistema Operacional
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Logs de Execução
+*.log
+
