@@ -87,15 +87,17 @@ Executou-se busca bayesiana em 25 trials sobre o LightGBM, otimizando o ROC-AUC 
 Avaliação realizada no **conjunto de teste independente (6.000 amostras holdout)**:
 
 | Modelo | Acurácia | ROC-AUC | PR-AUC | F1-Score | Recall (Alfab) | Recall (Não Alfab - Crítico) | Precisão | Brier Score |
-| :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | **Baseline (Reg. Logística)** | **0.7943** | **0.8805** | **0.8859** | 0.8014 | 79.48% | 79.39% | 80.82% | 0.1403 |
 | **LightGBM Otimizado** | **0.7910** | **0.8778** | **0.8842** | 0.7977 | 78.90% | 79.32% | 80.65% | 0.1421 |
 | **XGBoost** | **0.7923** | **0.8767** | **0.8831** | 0.8022 | 80.63% | 77.71% | 79.81% | 0.1422 |
 | **Random Forest** | 0.7927 | 0.8734 | 0.8760 | 0.8011 | 79.96% | 78.51% | 80.26% | 0.1489 |
 
 ### Análise da Matriz de Custo e Ajuste de Limiar (*Threshold Tuning*):
+
 Em projetos educacionais e sociais, **Falsos Negativos possuem custo social desproporcionalmente maior**:
-* Ao calibrar o limiar de decisão de **$0.50$ para o Limiar Social Ótimo (Max $F_2$-score de Risco)**, a taxa de captura de alunos em risco de não alfabetização salta expressivamente (+9.60 a +16.88 p.p.), reduzindo o risco de abandono pedagógico invisível.
+
+* Ao calibrar o limiar de decisão de **0.50** para o Limiar Social Ótimo (Max $F_2$-score de Risco), a taxa de captura de alunos em risco de não alfabetização salta expressivamente (+9.60 a +16.88 p.p.), reduzindo o risco de abandono pedagógico invisível.
 
 ---
 
