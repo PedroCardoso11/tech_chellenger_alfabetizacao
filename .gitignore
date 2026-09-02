@@ -30,8 +30,9 @@ models_saved/*.joblib
 Thumbs.db
 desktop.ini
 
-# Dados e Bases do Lakehouse (arquivos pesados .parquet)
-data/*
+# Dados e Bases do Lakehouse (ignora arquivos pesados, mantendo pastas vazias via .gitkeep)
+data/**/*
+!data/**/
 !data/**/.gitkeep
 
 # Documentos do Desafio e Enunciado
