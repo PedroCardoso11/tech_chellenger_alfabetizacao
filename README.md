@@ -1,6 +1,6 @@
 # Tech Challenge (Fase 3) – Predição e Inteligência Analítica para Alfabetização no Brasil
 
-![Status](https://img.shields.io/badge/Status-Conclu%C3%ADdo-brightgreen)
+![Status](https://img.shields.io/badge/Status-Conclu%C3%ADdo%20100%25%20Dados%20Reais-brightgreen)
 ![Python](https://img.shields.io/badge/Python-3.10%2B-blue)
 ![Machine Learning](https://img.shields.io/badge/ML-Scikit--Learn%20%7C%20LightGBM%20%7C%20XGBoost%20%7C%20SHAP-orange)
 ![Pós Tech](https://img.shields.io/badge/P%C3%B3s%20Tech-Data%20Science%20%26%20Machine%20Learning-blueviolet)
@@ -13,129 +13,161 @@ A alfabetização na idade certa (até o final do 2º ano do Ensino Fundamental,
 
 No âmbito do **Compromisso Nacional Criança Alfabetizada (CNCA)**, gestores públicos municipais e estaduais enfrentam o desafio de não apenas auditar dados passados de avaliações, mas de **antecipar proativamente quais alunos e redes estão sob risco iminente de não alfabetização**. 
 
-Este projeto desenvolve uma solução completa de Inteligência Analítica e Machine Learning supervisionado para atuar como um **Sistema de Alerta Precoce (*Early Warning System*)**, permitindo alocação eficiente e preventiva de recursos pedagógicos.
+Este projeto desenvolve uma solução completa de Inteligência Analítica e Machine Learning supervisionado para atuar como um **Sistema de Alerta Precoce (*Early Warning System*)**, permitindo alocação preventiva e focalizada de recursos pedagógicos antes do encerramento do ano letivo.
 
 ---
 
 ## 2. Objetivo Analítico
 
-Desenvolver, validar e interpretar um modelo preditivo supervisionado de classificação binária capaz de estimar se um aluno será considerado **Alfabetizado ($y=1$)** ou **Não Alfabetizado ($y=0$)** ao final do 2º ano do Ensino Fundamental, integrando variáveis **educacionais**, **territoriais** e **socioeconômicas**.
+Desenvolver, validar e interpretar um modelo preditivo supervisionado de classificação binária capaz de estimar se um aluno será considerado **Alfabetizado ($y=1$)** ou **Não Alfabetizado ($y=0$)** ao final do 2º ano do Ensino Fundamental, integrando variáveis **educacionais**, **territoriais** e **socioeconômicas** 100% extraídas do Data Lakehouse da Fase 2.
 
 ### Perguntas de Negócio Respondidas:
 1. **Quais fatores possuem maior impacto na probabilidade de alfabetização?**
 2. **Qual a importância relativa da escola (fatores intraescolares) versus a vulnerabilidade socioeconômica e territorial?**
 3. **Como calibrar o limiar de decisão do modelo para priorizar a proteção de crianças vulneráveis (reduzindo Falsos Negativos)?**
 4. **Quais intervenções práticas trazem maior retorno para as secretarias de educação?**
-5. **Como identificar municípios em risco educacional e que podem não atingir metas futuras?**
+5. **Como identificar municípios e escolas em risco educacional prioritário?**
 
 ---
 
-## 3. Descrição da Base de Dados
+## 3. Base de Dados (100% Dados Reais do Lakehouse)
 
-O projeto consome as bases tratadas na **camada Gold e Silver** construídas na Fase 2 do Data Lakehouse, integradas com microdados públicos inspirados no **Censo Escolar (INEP)**, **SAEB**, **CadÚnico / Bolsa Família** e **IBGE**:
+O projeto consome exclusivamente dados reais tratados nas **camadas Silver e Gold** construídas na Fase 2, integrando microdados oficiais de avaliação e dimensões socioeconômicas e territoriais:
 
-* **Fato Alunos e Avaliação:** `data/silver/fato_aluno_alfabetizacao` (mais de 2,12 milhões de registros com presença, série, rede, proficiência e status).
-* **Dimensões Escolares:** `data/silver/dim_escola` e `data/gold/ranking_escolas_prioritarias` (infraestrutura básica, saneamento, laboratórios, conectividade e bibliotecas).
-* **Dimensões Territoriais:** `data/silver/dim_municipio`, `data/silver/dim_uf`, `data/silver/dominio_regiao_uf` e `data/gold/mapa_calor_territorial` (região, porte do município, IVS territorial).
-* **Dimensões Socioeconômicas:** `data/silver/fato_bolsa_familia_municipio` e `data/gold/meta_uf_bolsa_familia` (renda per capita familiar, escolaridade dos pais, recursos pedagógicos domiciliares).
+* **Microdados de Alunos e Avaliação (Silver):** `data/silver/fato_aluno_alfabetizacao` (mais de **2,12 milhões de registros reais** do 2º ano com rede, presença, preenchimento de caderno, peso amostral estatístico e status de alfabetização).
+* **Desempenho e Porte Escolar (Gold):** `data/gold/ranking_escolas_prioritarias` (**42.497 escolas públicas reais** com porte de alunos avaliados, taxa de presença real, histórico agregado de não alfabetização e posições nos rankings municipal e estadual).
+* **Vulnerabilidade Socioeconômica Municipal (Silver):** `data/silver/fato_bolsa_familia_municipio` (**5.570 municípios reais** com total de famílias beneficiárias, volume financeiro transferido e benefício médio municipal).
+* **Metas e Risco Territorial Municipal (Gold):** `data/gold/mapa_calor_territorial` (**5.232 municípios reais** com classe de risco territorial, meta anual pactuada do CNCA e distância em pontos percentuais para a meta).
+* **Desigualdade e Dispersão Federativa (Gold):** `data/gold/desigualdade_territorial_uf` (desvio padrão de aprendizado intraestadual, amplitude máxima-mínima e percentual de municípios abaixo da meta).
+
+> [!IMPORTANT]
+> **Zero Dados Sintéticos:** O pipeline opera integralmente com dados reais do Lakehouse. Nenhuma variável simulada via `np.random` é utilizada.
+> **Zero Data Leakage:** A nota contínua de proficiência (`proficiencia`) é descartada do conjunto preditor. Como o rótulo de alfabetizado deriva da proficiência, utilizá-la geraria vazamento trivial (o modelo apenas leria o resultado do teste). O modelo prediz com base no contexto escolar, socioeconômico e territorial da criança.
 
 ---
 
 ## 4. Engenharia de Atributos e Pré-processamento (*Zero Data Leakage*)
 
-Para garantir aderência estrita às melhores práticas de engenharia de machine learning em ambientes produtivos, todo o pré-processamento foi encapsulado via `sklearn.compose.ColumnTransformer` e `Pipeline`, garantindo que **nenhuma informação do conjunto de validação ou teste contaminasse o treinamento**:
+Todo o pré-processamento foi encapsulado via `sklearn.compose.ColumnTransformer` e `sklearn.pipeline.Pipeline`, garantindo que **nenhuma informação do conjunto de validação ou teste contamine o treinamento**:
 
 ```mermaid
 flowchart TD
-    Raw[Dados Brutos Integrados] --> Split[Divisão Estratificada: Treino 80% / Teste 20%]
-    Split --> FE[Feature Engineering: Índices Compostos]
-    FE --> CT[ColumnTransformer Exclusivo do Treino]
+    Raw[Microdados Reais Integrados: Alunos + Escolas + Municípios + BF] --> Split[Divisão Estratificada: Treino 80% / Teste 20%]
+    Split --> FE[Feature Engineering de Domínio: Índices Relacionais]
+    FE --> CT[ColumnTransformer Isolado no Treino]
     CT --> Num[Imputer Mediana + RobustScaler]
     CT --> Nom[Imputer Moda + OneHotEncoder]
     CT --> Ord[OrdinalEncoder + RobustScaler]
-    Num & Nom & Ord --> Transformed[Features Prontas para Modelagem]
+    CT --> High[OneHotEncoder para 27 UFs]
+    Num & Nom & Ord & High --> Model[Modelos de Classificação Supervisionada]
 ```
 
-### Novos Atributos Compostos Criados:
-* `indice_infraestrutura_composto`: Combinação ponderada de biblioteca (30%), internet banda larga (25%), laboratório de informática (20%), água filtrada (15%) e quadra de esportes (10%).
-* `indice_capital_cultural_casa`: Síntese de escolaridade da mãe (35%), livros em casa (25%), computador/tablet (20%) e internet domiciliar (20%).
-* `indice_vulnerabilidade_familiar`: Indicador ponderado de renda per capita invertida, dependência de transferência de renda (Bolsa Família) e IVS territorial.
-* `razao_engajamento_turma`: Frequência escolar individual ponderada pela densidade de alunos por turma.
+### Atributos Derivados de Domínio (Feature Engineering Real):
+1. `razao_desempenho_escola_uf`: Relação entre a taxa de não alfabetização da escola e a taxa de municípios abaixo da meta no estado (mede o desvio relativo da escola frente à sua rede estadual).
+2. `indice_engajamento_escola`: Produto entre a presença real dos alunos e a taxa agregada de sucesso alfabetizador da escola ($Presença \times (1 - TaxaNãoAlfab)$).
+3. `razao_beneficiarios_porte_escola`: Pressão socioeconômica territorial calculada pela razão entre o total de famílias beneficiárias do Bolsa Família no município e o porte da escola.
 
 ---
 
 ## 5. Modelagem e Escolha dos Algoritmos
 
-Foram desenvolvidos e avaliados 4 algoritmos sob protocolo de **Validação Cruzada Estratificada (Stratified 5-Fold CV Zero Leakage)** no conjunto de treino (24.000 registros):
+Foram desenvolvidos e avaliados 4 algoritmos sob protocolo rigoroso de **Validação Cruzada Estratificada (Stratified 5-Fold CV Zero Leakage)** no conjunto de treino (24.000 amostras reais):
 
 1. **Baseline - Regressão Logística L2:** Modelo linear de referência com regularização Ridge e ponderação balanceada de classes.
-2. **Random Forest Classifier:** Ensemble de árvores com amostragem *bootstrap* balanceada (`balanced_subsample`).
-3. **XGBoost Classifier:** Algoritmo de gradient boosting escalável com penalização de complexidade.
-4. **LightGBM Classifier:** Gradient boosting baseado em histogramas com otimização por folhas (*leaf-wise*), selecionado para otimização fina.
+2. **Random Forest Classifier:** Ensemble de 150 árvores de decisão com subamostragem balanceada (`balanced_subsample`).
+3. **XGBoost Classifier:** Gradient boosting escalável com penalização de complexidade e ponderação balanceada de classes.
+4. **LightGBM Classifier:** Gradient boosting baseado em histogramas com crescimento por folhas (*leaf-wise*), selecionado para sintonia fina.
 
 ### Otimização Bayesiana de Hiperparâmetros (Optuna):
-Executou-se busca bayesiana em 25 trials sobre o LightGBM, otimizando o ROC-AUC em validação cruzada 5-fold, resultando em:
-* `learning_rate`: ~0.044
-* `max_depth`: 4 | `num_leaves`: 48
-* `subsample`: 0.731 | `colsample_bytree`: 0.824
-* `reg_alpha` ($L_1$): 1.451 | `reg_lambda` ($L_2$): 0.0079
+Executou-se busca bayesiana em 25 trials sobre o Pipeline completo do LightGBM com validação cruzada estratificada em 5 folds, resultando em:
+* `n_estimators`: 100
+* `max_depth`: 4 | `num_leaves`: 31
+* `learning_rate`: 0.03716
+* `subsample`: 0.94818 | `colsample_bytree`: 0.83383
+* `min_child_samples`: 40
+* `reg_alpha` ($L_1$): 0.09815 | `reg_lambda` ($L_2$): 0.01502
 
 ---
 
-## 6. Métricas de Avaliação e Desempenho no Teste
+## 6. Métricas de Avaliação e Desempenho no Teste Independente
 
-Avaliação realizada no **conjunto de teste independente (6.000 amostras holdout)**:
+Avaliação executada no conjunto de teste independente (**6.000 alunos reais holdout**, sem contato prévio com o modelo):
 
-| Modelo | Acurácia | ROC-AUC | PR-AUC | F1-Score | Recall (Alfab) | Recall (Não Alfab - Crítico) | Precisão | Brier Score |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| **Baseline (Reg. Logística)** | **0.7943** | **0.8805** | **0.8859** | 0.8014 | 79.48% | 79.39% | 80.82% | 0.1403 |
-| **LightGBM Otimizado** | **0.7910** | **0.8778** | **0.8842** | 0.7977 | 78.90% | 79.32% | 80.65% | 0.1421 |
-| **XGBoost** | **0.7923** | **0.8767** | **0.8831** | 0.8022 | 80.63% | 77.71% | 79.81% | 0.1422 |
-| **Random Forest** | 0.7927 | 0.8734 | 0.8760 | 0.8011 | 79.96% | 78.51% | 80.26% | 0.1489 |
+| Modelo | Acurácia | ROC-AUC | PR-AUC | F1-Score | Recall (Alfabetizado) | Recall (Não Alfab - Crítico) | Precisão | Brier Score |
+| :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
+| 🥇 **LightGBM (Otimizado via Optuna)** | **66.75%** | **0.7395** | **0.8107** | **0.7046** | 66.32% | 67.38% | 75.14% | 0.2060 |
+| 🥈 **Baseline (Regressão Logística)** | 66.52% | 0.7392 | 0.8092 | 0.7015 | 65.82% | 67.55% | 75.10% | 0.2065 |
+| 🥉 **XGBoost** | 67.92% | 0.7348 | 0.8069 | 0.7498 | 80.43% | 49.32% | 70.23% | 0.2009 |
+| 4. **LightGBM (Padrão)** | 66.07% | 0.7332 | 0.8066 | 0.6993 | 65.99% | 66.18% | 74.36% | 0.2076 |
+| 5. **Random Forest** | 66.67% | 0.7308 | 0.8020 | 0.7081 | 67.63% | 65.23% | 74.30% | 0.2073 |
 
-### Análise da Matriz de Custo e Ajuste de Limiar (*Threshold Tuning*):
+### 🎯 Gestão do Risco Social e Calibração de Limiar (*Threshold Tuning*):
 
-Em projetos educacionais e sociais, **Falsos Negativos possuem custo social desproporcionalmente maior**:
+No contexto de políticas públicas educacionais, os erros possuem custos sociais completamente assimétricos:
+* **Falso Positivo:** Prever que a criança está em risco quando não está $\rightarrow$ **Custo baixo** (a criança recebe reforço pedagógico preventivo adicional).
+* **Falso Negativo:** Prever que a criança será alfabetizada quando ela NÃO será $\rightarrow$ **Custo crítico** (a criança fica invisível para os programas de intervenção e consolida defasagem escolar).
 
-* Ao calibrar o limiar de decisão de **0.50** para o Limiar Social Ótimo (Max $F_2$-score de Risco), a taxa de captura de alunos em risco de não alfabetização salta expressivamente (+9.60 a +16.88 p.p.), reduzindo o risco de abandono pedagógico invisível.
+Por essa razão, calibrou-se o limiar de corte maximizando o $F_2$-score de risco (que atribui peso 2x maior ao Recall do que à Precisão):
+
+| Política de Decisão | Limiar de Corte ($t$) | Recall Crianças em Risco | Precisão | $F_2$-Score Risco |
+| :--- | :---: | :---: | :---: | :---: |
+| **Limiar Padrão** | $t = 0.50$ | 67.38% | 57.37% | 0.6508 |
+| **Limiar Social Recomendado (Max $F_2$)** | **$t = 0.77$** | **97.02% (+29.63 p.p.)** | 45.35% | **0.7901** |
+
+> Com o limiar social calibrado em $t=0.77$, o sistema de alerta precoce **identifica 97 em cada 100 crianças em risco de não alfabetização**.
 
 ---
 
 ## 7. Interpretação dos Resultados e Explicabilidade (SHAP)
 
-A decomposição dos valores SHAP (*TreeExplainer*) revelou o peso relativo de cada pilar explicativo:
+A interpretação baseada em valores SHAP (*TreeExplainer*) sobre o modelo em árvore permitiu auditar os reais mecanismos de decisão:
 
-* **Pilar Educacional:**
-  * A **Frequência Escolar** e a **Formação Docente Superior** são os preditores escolares mais decisivos.
-  * A **Razão de Engajamento da Turma** e o acesso a **Biblioteca Escolar e Internet Banda Larga** atuam como fatores protetivos imediatos.
-* **Pilar Socioeconômico:**
-  * O **Índice de Vulnerabilidade Familiar** e a **Renda Per Capita** exercem forte pressão sobre a taxa de sucesso.
-  * A vulnerabilidade econômica é fortemente mitigada quando há capital cultural no domicílio (presença de livros e suporte materno).
-* **Pilar Territorial:**
-  * Disparidades interestaduais e entre zonas urbana/rural reforçam a necessidade de regimes de colaboração federativa.
+### Decomposição por Pilares de Impacto Preditivo:
+* 🏫 **Pilar Educacional (93.5% do impacto):** Os fatores escolares e o histórico de assiduidade e eficácia da unidade escolar dominam a capacidade de prever a probabilidade de alfabetização do aluno.
+* 🗺️ **Pilar Territorial (4.8% do impacto):** Metas municipais pactuadas, distância da meta e disparidades regionais estruturais (destaque para a Região Nordeste).
+* 💰 **Pilar Socioeconômico (1.7% do impacto):** O valor médio do benefício do Bolsa Família municipal e a cobertura de transferência de renda complementam a identificação de áreas de vulnerabilidade extrema.
 
----
-
-## 8. Aplicação Prática para Políticas Públicas
-
-1. **Protocolo de Busca Ativa e Monitoramento de Frequência:** Alerta precoce semanal quando a frequência do aluno cair abaixo de 80%, disparando ação conjunta entre escola e assistência social.
-2. **Priorização de Infraestrutura Pedagógica:** Investimento focalizado na implantação de bibliotecas e salas de leitura em escolas públicas prioritárias identificadas na camada Gold.
-3. **Distribuição Focalizada de Acervo Literário:** Entrega de kits de livros infantis diretamente para famílias inscritas no Cadastro Único / Bolsa Família com crianças no 1º e 2º anos.
-
----
-
-## 9. Limitações do Projeto
-
-* **Granularidade Amostral:** Necessidade de incorporação contínua de microdados longitudinais que acompanhem o mesmo aluno desde a Educação Infantil até o final do ciclo fundamental.
-* **Variáveis Qualitativas Não Observadas:** Aspectos pedagógicos como metodologia de alfabetização adotada e clima escolar não são plenamente capturados em dados quantitativos censitários.
+### Top 10 Preditores Mais Determinantes:
+1. `escola_percentual_nao_alfabetizado` (0.7502) — Taxa agregada de não alfabetizados da escola.
+2. `escola_percentual_presenca` (0.1244) — Assiduidade média oficial da escola.
+3. `indice_engajamento_escola` (0.0311) — Índice combinado de frequência e eficácia alfabetizadora.
+4. `razao_desempenho_escola_uf` (0.0237) — Desvio relativo da escola frente à rede estadual.
+5. `mun_meta_alfabetizacao` (0.0175) — Meta anual pactuada do CNCA para o município.
+6. `regiao_brasil_Nordeste` (0.0148) — Fator estrutural regional.
+7. `bf_beneficio_medio` (0.0100) — Renda média municipal via Bolsa Família.
+8. `mun_distancia_meta` (0.0100) — Desafio de convergência municipal em pontos percentuais.
+9. `escola_total_alunos` (0.0094) — Porte da unidade escolar.
+10. `escola_ranking_uf` (0.0087) — Posição da escola no ranking estadual.
 
 ---
 
-## 10. Possíveis Evoluções Futuras
+## 8. Evidências Visuais e Gráficos Analíticos
 
-* Implementação de modelos de séries temporais para projeção de metas municipais plurianuais (2025–2030).
-* Criação de uma API REST em FastAPI / Docker para integração em tempo real com diários de classe digitais municipais.
-* Painel de monitoramento interativo em Streamlit para secretarias estaduais e municipais de educação.
+Os artefatos visuais gerados em alta resolução (300 DPI) estão disponíveis em `images/` e `reports/figures/`:
+
+| Análise Exploratória (EDA) | Avaliação e Desempenho (ML) | Explicabilidade (SHAP / XAI) |
+| :---: | :---: | :---: |
+| ![Alvo](images/eda_01_distribuicao_alvo.png) | ![Curvas ROC](images/eval_02_curvas_roc.png) | ![SHAP Beeswarm](images/shap_01_beeswarm_summary.png) |
+| ![Determinantes](images/eda_02_fatores_socioeconomicos.png) | ![Tradeoff Limiar](images/eval_04_tradeoff_limiar.png) | ![Pilares](images/shap_03_distribuicao_pilares.png) |
+
+---
+
+## 9. Recomendações para Políticas Públicas Educacionais
+
+1. **Protocolo de Busca Ativa e Alerta Precoce Escolar:** Escolas cuja taxa de presença real é inferior a 85% devem disparar um protocolo de busca ativa imediata com apoio intersetorial da assistência social (CRAS/CREAS).
+2. **Intervenção Pedagógica nas Escolas Prioritárias da Camada Gold:** As 10% escolas com maiores taxas de não alfabetização e pior ranking municipal devem receber tutoria pedagógica dedicada e reforço no contraturno.
+3. **Pactuação e Monitoramento das Metas Municipais:** Municípios com mais de 10 p.p. de distância para a meta pactuada do CNCA devem receber apoio técnico intensivo dos comitês estaduais.
+4. **Combinação do Bolsa Família com Busca Ativa:** Utilizar as condicionalidades educacionais do Programa Bolsa Família como instrumento de garantia de assiduidade escolar no 1º e 2º anos.
+
+---
+
+## 10. Limitações e Possíveis Evoluções
+
+* **Limitações:** O modelo atual opera sobre cortes transversais anuais. Variáveis como clima escolar, formação continuada específica dos professores do ciclo de alfabetização e métodos pedagógicos não são mensurados em bases censitárias.
+* **Evoluções Futuras:**
+  * Implementação de modelos longitudinais que acompanhem os alunos desde a Educação Infantil até o final do Ensino Fundamental.
+  * Integração de diários eletrônicos municipais via API REST (FastAPI) para predição contínua ao longo do ano letivo.
+  * Desenvolvimento de dashboard interativo em Streamlit para visualização em tempo real pelas secretarias de educação.
 
 ---
 
@@ -144,11 +176,11 @@ A decomposição dos valores SHAP (*TreeExplainer*) revelou o peso relativo de c
 ```
 tech-challenge-fase3/
 │
-├── data/
-│   ├── silver/                 # Tabelas limpas e enriquecidas (alunos, escolas, BF)
+├── data/                       # Camadas do Data Lakehouse (Silver e Gold reais)
+│   ├── silver/                 # Tabelas limpas (alunos, escolas, Bolsa Família)
 │   └── gold/                   # Visões analíticas, rankings e metas
 │
-├── notebooks/                  # Notebooks Jupyter modulares e integrados
+├── notebooks/                  # Notebooks Jupyter modulares e documentados
 │   ├── 01_analise_exploratoria_dados_eda.ipynb
 │   ├── 02_engenharia_atributos_preprocessamento.ipynb
 │   ├── 03_modelagem_validacao_cruzada_otimizacao.ipynb
@@ -156,15 +188,15 @@ tech-challenge-fase3/
 │   └── tech_challenge_alfabetizacao.ipynb
 │
 ├── src/                        # Código-fonte modularizado em subpacotes
-│   ├── preprocessing/          # Carga e Pipeline de Feature Engineering
+│   ├── preprocessing/          # Carga de dados 100% reais e Pipeline Scikit-Learn
 │   │   ├── __init__.py
 │   │   ├── data_loader.py
 │   │   └── pipeline.py
-│   ├── modeling/               # Modelos, CV Zero Leakage e Optuna Tuning
+│   ├── modeling/               # Catálogo de modelos, 5-Fold CV e Optuna Tuning
 │   │   ├── __init__.py
 │   │   ├── models.py
 │   │   └── tuning.py
-│   ├── evaluation/             # Métricas, Curvas ROC/PR e Threshold Tuning
+│   ├── evaluation/             # Métricas de teste e Threshold Tuning Social
 │   │   ├── __init__.py
 │   │   ├── metrics.py
 │   │   └── threshold.py
@@ -177,32 +209,35 @@ tech-challenge-fase3/
 │
 ├── reports/
 │   ├── figures/                # 12 figuras analíticas em alta resolução
-│   └── metrics_summary.json    # Resultados consolidados no teste
+│   └── metrics_summary.json    # Sumário consolidado de métricas no teste
 │
-├── images/                     # Artefatos visuais de apoio para apresentação/vídeo
-├── models_saved/               # Modelos treinados serializados (.joblib)
+├── images/                     # 12 figuras de apoio para apresentação e vídeo
+├── models_saved/               # Modelos e pipelines serializados (.joblib)
 ├── main.py                     # Pipeline executável ponta a ponta
 ├── requirements.txt            # Dependências do projeto
-├── .gitignore                  # Arquivo de exclusão de artefatos temporários
+├── .gitignore                  # Regras de exclusão de artefatos temporários
 └── README.md                   # Documentação executiva completa
 ```
 
 ---
 
-## 🚀 Como Reproduzir o Projeto
+## 🚀 Como Executar o Projeto
 
 ```bash
 # 1. Clonar o repositório
-git clone https://github.com/seu-usuario/tech-challenge-fase3.git
-cd tech-challenge-fase3
+git clone https://github.com/PedroCardoso11/tech_chellenger_alfabetizacao.git
+cd tech_chellenger_alfabetizacao
 
 # 2. Criar e ativar ambiente virtual
 python -m venv .venv
-source .venv/bin/activate  # No Windows: .venv\Scripts\activate
+# No Windows:
+.venv\Scripts\activate
+# No Linux/Mac:
+source .venv/bin/activate
 
 # 3. Instalar dependências
 pip install -r requirements.txt
 
-# 4. Executar pipeline completo (Zero Data Leakage)
+# 4. Executar o pipeline completo ponta a ponta
 python main.py
 ```

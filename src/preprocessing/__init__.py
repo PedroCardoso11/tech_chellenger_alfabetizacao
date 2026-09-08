@@ -8,6 +8,7 @@ from src.preprocessing.pipeline import (
     build_preprocessor_pipeline,
     build_feature_dictionary,
     extract_transformed_feature_names,
+    split_and_preprocess_data,
 )
 
 __all__ = [
@@ -16,5 +17,6 @@ __all__ = [
     "build_preprocessor_pipeline",
     "build_feature_dictionary",
     "extract_transformed_feature_names",
+    "split_and_preprocess_data",
 ]
 

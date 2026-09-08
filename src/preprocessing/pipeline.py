@@ -146,3 +146,12 @@ def extract_transformed_feature_names(fitted_preprocessor: ColumnTransformer, fe
         pass
         
     return feature_names
+
+
+def split_and_preprocess_data(df: pd.DataFrame, test_size: float = TEST_SIZE, seed: int = RANDOM_STATE):
+    """
+    Função utilitária para divisão estratificada treino/teste com Zero Data Leakage.
+    """
+    X = df.drop(columns=[TARGET_COLUMN])
+    y = df[TARGET_COLUMN].values
+    return train_test_split(X, y, test_size=test_size, stratify=y, random_state=seed)
