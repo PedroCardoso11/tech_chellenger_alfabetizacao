@@ -1,7 +1,7 @@
 """
 Módulo de Engenharia de Atributos e Pipeline de Pré-processamento (src/preprocessing/pipeline.py)
-Criação de features compostas educacionais, imputação, escalonamento e codificação
-categórica com garantia estrita de Zero Data Leakage.
+Criação de features compostas educacionais, socioeconômicas e territoriais REAIS,
+imputação, escalonamento e codificação categórica com garantia estrita de Zero Data Leakage.
 """
 
 from typing import Tuple, List, Dict
@@ -29,7 +29,7 @@ from src.config import (
 class EducationFeatureEngineer(BaseEstimator, TransformerMixin):
     """
     Transformador personalizado Scikit-Learn para criação de índices compostos
-    e atributos educacionais / socioeconômicos derivados de domínio.
+    e atributos educacionais / socioeconômicos derivados de domínio sobre dados REAIS.
     """
     def __init__(self):
         pass
@@ -40,51 +40,20 @@ class EducationFeatureEngineer(BaseEstimator, TransformerMixin):
     def transform(self, X: pd.DataFrame) -> pd.DataFrame:
         X_out = X.copy()
         
-        # 1. Índice Composto de Infraestrutura Escolar (0 a 1)
-        pesos_infra = {
-            "infra_agua_filtrada": 0.15,
-            "infra_biblioteca": 0.30,
-            "infra_laboratorio_info": 0.20,
-            "infra_internet_banda_larga": 0.25,
-            "infra_quadra_esportes": 0.10,
-        }
-        score_infra = np.zeros(len(X_out))
-        for col, peso in pesos_infra.items():
-            if col in X_out.columns:
-                val = (X_out[col] == "Sim").astype(float)
-                score_infra += val * peso
-        X_out["indice_infraestrutura_composto"] = np.round(score_infra, 3)
+        # 1. Razão de Desempenho Escola vs Estado (Pressão de Aprendizado Relativo)
+        esc_nao_alfab = pd.to_numeric(X_out.get("escola_percentual_nao_alfabetizado", 0.0), errors="coerce").fillna(0.0)
+        uf_abaixo_meta = pd.to_numeric(X_out.get("uf_percentual_municipios_abaixo_meta", 50.0), errors="coerce").fillna(50.0)
+        X_out["razao_desempenho_escola_uf"] = np.round(esc_nao_alfab / (uf_abaixo_meta + 1.0), 4)
 
-        # 2. Índice de Capital Cultural e Tecnológico Domiciliar (0 a 1)
-        livros_norm = np.clip(X_out.get("quantidade_livros_casa", 0) / 30.0, 0, 1)
-        tem_comp = (X_out.get("tem_computador_ou_tablet", "Não") == "Sim").astype(float)
-        tem_net = (X_out.get("acesso_internet_casa", "Não") == "Sim").astype(float)
-        
-        esc_map = {
-            "Sem instrucao": 0.0,
-            "Fundamental incompleto": 0.25,
-            "Fundamental completo": 0.50,
-            "Medio completo": 0.75,
-            "Superior completo": 1.0,
-        }
-        esc_val = X_out.get("escolaridade_mae", "Sem instrucao").map(esc_map).fillna(0.3)
-        X_out["indice_capital_cultural_casa"] = np.round(
-            0.35 * esc_val + 0.25 * livros_norm + 0.20 * tem_comp + 0.20 * tem_net, 3
-        )
+        # 2. Índice de Engajamento e Eficácia Escolar (Presença x Sucesso Agregado)
+        presenca_esc = pd.to_numeric(X_out.get("escola_percentual_presenca", 80.0), errors="coerce").fillna(80.0)
+        taxa_sucesso_esc = np.clip(1.0 - (esc_nao_alfab / 100.0), 0.0, 1.0)
+        X_out["indice_engajamento_escola"] = np.round(presenca_esc * taxa_sucesso_esc, 3)
 
-        # 3. Índice de Vulnerabilidade Familiar (0 a 1)
-        renda = X_out.get("renda_per_capita_reais", 800.0).fillna(800.0)
-        renda_vuln = np.clip(1.0 - (renda / 2500.0), 0.0, 1.0)
-        bf_vuln = (X_out.get("beneficiario_bolsa_familia", "Não") == "Sim").astype(float)
-        ivs_terr = X_out.get("ivs_territorial", 0.3).fillna(0.3)
-        X_out["indice_vulnerabilidade_familiar"] = np.round(
-            0.40 * renda_vuln + 0.35 * bf_vuln + 0.25 * ivs_terr, 3
-        )
-
-        # 4. Razão de Engajamento e Atenção Individual (Frequência / Tamanho Turma)
-        freq = X_out.get("frequencia_escolar", 80.0).fillna(80.0)
-        turma = X_out.get("tamanho_turma", 25.0).replace(0, 25.0).fillna(25.0)
-        X_out["razao_engajamento_turma"] = np.round(freq / turma, 2)
+        # 3. Razão Beneficiários Bolsa Família por Porte Escolar (Pressão Socioeconômica Territorial)
+        bf_benef = pd.to_numeric(X_out.get("total_beneficiarios", 1000.0), errors="coerce").fillna(1000.0)
+        porte_esc = pd.to_numeric(X_out.get("escola_total_alunos", 50.0), errors="coerce").replace(0, 50.0).fillna(50.0)
+        X_out["razao_beneficiarios_porte_escola"] = np.round(bf_benef / (porte_esc + 1.0), 3)
 
         return X_out
 
@@ -123,8 +92,7 @@ def build_preprocessor_pipeline(feature_dict: dict) -> ColumnTransformer:
 
     # Pipeline Categórico Ordinal: Imputação por Moda + OrdinalEncoder
     ordinal_categories = [
-        ["Pequeno I", "Pequeno II", "Medio", "Grande", "Metropole"],
-        ["Sem instrucao", "Fundamental incompleto", "Fundamental completo", "Medio completo", "Superior completo"]
+        ["Mais de 10 p.p. abaixo", "Entre 5 e 10 p.p. abaixo", "Ate 5 p.p. abaixo", "Meta atingida"]
     ]
     ord_pipeline = Pipeline([
         ("imputer", SimpleImputer(strategy="most_frequent")),
@@ -178,4 +146,3 @@ def extract_transformed_feature_names(fitted_preprocessor: ColumnTransformer, fe
         pass
         
     return feature_names
-

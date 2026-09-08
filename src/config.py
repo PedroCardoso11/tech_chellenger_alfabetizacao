@@ -1,7 +1,7 @@
 """
 Módulo de Configuração Global (src/config.py)
 Centraliza parâmetros globais, caminhos de diretórios, seeds de reproducibilidade,
-definições de atributos e configurações de modelagem e otimização.
+definições de atributos 100% REAIS e configurações de modelagem e otimização.
 """
 
 import os
@@ -30,107 +30,82 @@ N_SPLITS_CV = 5
 N_OPTUNA_TRIALS = 25
 
 # ==========================================
-# Definição de Variáveis (Features & Target)
+# Definição de Variáveis 100% Reais (Features & Target)
 # ==========================================
 TARGET_COLUMN = "alfabetizado"  # 1 = Alfabetizado, 0 = Não alfabetizado
 
-# 1. Variáveis Educacionais
+# 1. Variáveis Educacionais Reais (Escola e Aluno)
 NUMERICAL_FEATURES_EDU = [
-    "frequencia_escolar",          # Taxa de presença do aluno (0 a 100%)
-    "formacao_docente_superior",   # % de professores com ensino superior/pós (0 a 100%)
-    "tamanho_turma",               # Número de alunos na turma
-    "horas_aula_diarias",          # Horas de permanência diária na escola
+    "peso_aluno",                         # Peso amostral estatístico oficial do aluno no SAEB
+    "escola_total_alunos",                # Porte da escola (alunos avaliados no 2º ano)
+    "escola_percentual_presenca",         # Taxa de presença real dos alunos da escola na avaliação
+    "escola_percentual_nao_alfabetizado", # Taxa histórica agregada de não alfabetização da escola
+    "escola_ranking_municipio",           # Posição da escola no ranking do município
+    "escola_ranking_uf",                  # Posição da escola no ranking do estado
 ]
 
 CATEGORICAL_FEATURES_EDU = [
-    "rede",                        # 'Municipal', 'Estadual', 'Privada'
-    "infra_agua_filtrada",         # 'Sim', 'Não'
-    "infra_biblioteca",            # 'Sim', 'Não'
-    "infra_laboratorio_info",      # 'Sim', 'Não'
-    "infra_internet_banda_larga",  # 'Sim', 'Não'
-    "infra_quadra_esportes",       # 'Sim', 'Não'
+    "rede",                               # 'Municipal', 'Estadual', 'Privada', 'Federal'
 ]
 
-# 2. Variáveis Territoriais
-CATEGORICAL_FEATURES_TERR = [
-    "localizacao",                 # 'Urbana', 'Rural'
-    "regiao_brasil",               # 'Norte', 'Nordeste', 'Centro-Oeste', 'Sudeste', 'Sul'
-    "porte_municipio",             # 'Pequeno I', 'Pequeno II', 'Medio', 'Grande', 'Metropole'
-    "sigla_uf",                    # Unidade Federativa (27 UFs)
-]
-
-NUMERICAL_FEATURES_TERR = [
-    "ivs_territorial",             # Índice de Vulnerabilidade Social Municipal (0 a 1)
-    "taxa_cobertura_creche_mun",   # Taxa de cobertura de educação infantil municipal (%)
-]
-
-# 3. Variáveis Socioeconômicas
+# 2. Variáveis Socioeconômicas Reais (Bolsa Família Municipal)
 NUMERICAL_FEATURES_SOCIO = [
-    "renda_per_capita_reais",      # Renda familiar per capita (R$)
-    "quantidade_livros_casa",      # Quantidade aproximada de livros no domicílio
+    "total_beneficiarios",                # Total de famílias beneficiárias do Bolsa Família no município
+    "valor_total_pago",                   # Volume financeiro total repassado ao município
+    "bf_beneficio_medio",                 # Valor médio do benefício por família no município (R$)
 ]
 
-CATEGORICAL_FEATURES_SOCIO = [
-    "beneficiario_bolsa_familia",  # 'Sim', 'Não'
-    "escolaridade_mae",            # 'Sem instrucao', 'Fundamental incompleto', 'Fundamental completo', 'Medio completo', 'Superior completo'
-    "acesso_internet_casa",        # 'Sim', 'Não'
-    "tem_computador_ou_tablet",    # 'Sim', 'Não'
+CATEGORICAL_FEATURES_SOCIO = []
+
+# 3. Variáveis Territoriais Reais (Município e UF)
+NUMERICAL_FEATURES_TERR = [
+    "mun_meta_alfabetizacao",             # Meta anual pactuada do CNCA para o município
+    "mun_distancia_meta",                 # Distância entre o resultado e a meta pactuada
+    "uf_desvio_padrao_resultado",         # Dispersão/desigualdade de aprendizado entre municípios do estado
+    "uf_amplitude_resultado",             # Amplitude de desempenho da UF (diferença máx - mín)
+    "uf_percentual_municipios_abaixo_meta", # % de municípios da UF que não atingiram a meta
 ]
 
-# Consolidação de Features Base
+CATEGORICAL_FEATURES_TERR = [
+    "regiao_brasil",                      # 'Norte', 'Nordeste', 'Centro-Oeste', 'Sudeste', 'Sul'
+    "mun_classe_risco",                   # 'Meta atingida', 'Ate 5 p.p. abaixo', 'Entre 5 e 10 p.p. abaixo', 'Mais de 10 p.p. abaixo'
+    "sigla_uf",                           # Unidade Federativa (27 UFs)
+]
+
+# Consolidação de Features Base Reais
 BASE_NUMERICAL_FEATURES = (
     NUMERICAL_FEATURES_EDU
-    + NUMERICAL_FEATURES_TERR
     + NUMERICAL_FEATURES_SOCIO
+    + NUMERICAL_FEATURES_TERR
 )
 
-# Features Numéricas Geradas por Feature Engineering
+# Features Numéricas Derivadas (Domain Feature Engineering Real)
 ENGINEERED_NUMERICAL_FEATURES = [
-    "indice_infraestrutura_composto",
-    "indice_capital_cultural_casa",
-    "indice_vulnerabilidade_familiar",
-    "razao_engajamento_turma",
+    "razao_desempenho_escola_uf",         # Desempenho relativo da escola em relação ao estado
+    "indice_engajamento_escola",          # Interação entre presença escolar e proficiência agregada
+    "razao_beneficiarios_porte_escola",   # Pressão de vulnerabilidade social no entorno da escola
 ]
 
 ALL_NUMERICAL_FEATURES = BASE_NUMERICAL_FEATURES + ENGINEERED_NUMERICAL_FEATURES
 
 CATEGORICAL_NOMINAL_LOW_CARD = [
     "rede",
-    "localizacao",
     "regiao_brasil",
-    "infra_agua_filtrada",
-    "infra_biblioteca",
-    "infra_laboratorio_info",
-    "infra_internet_banda_larga",
-    "infra_quadra_esportes",
-    "beneficiario_bolsa_familia",
-    "acesso_internet_casa",
-    "tem_computador_ou_tablet",
 ]
 
 CATEGORICAL_ORDINAL = [
-    "porte_municipio",
-    "escolaridade_mae",
+    "mun_classe_risco",
 ]
 
 CATEGORICAL_HIGH_CARD = [
-    "sigla_uf"
+    "sigla_uf",
 ]
 
 ORDINAL_MAPPINGS = {
-    "porte_municipio": {
-        "Pequeno I": 1,
-        "Pequeno II": 2,
-        "Medio": 3,
-        "Grande": 4,
-        "Metropole": 5,
-    },
-    "escolaridade_mae": {
-        "Sem instrucao": 0,
-        "Fundamental incompleto": 1,
-        "Fundamental completo": 2,
-        "Medio completo": 3,
-        "Superior completo": 4,
+    "mun_classe_risco": {
+        "Meta atingida": 3,
+        "Ate 5 p.p. abaixo": 2,
+        "Entre 5 e 10 p.p. abaixo": 1,
+        "Mais de 10 p.p. abaixo": 0,
     }
 }
-

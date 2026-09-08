@@ -115,28 +115,31 @@ def _generate_eda_plots(df: pd.DataFrame, target_counts: pd.Series, target_pct: 
         plt.savefig(dest, dpi=300)
     plt.close()
 
-    # FIGURA 2: Impacto Socioeconômico e Frequência
+    # FIGURA 2: Impacto Escolar, Socioeconômico e Territorial Real
     fig, axes = plt.subplots(1, 3, figsize=(18, 5))
     df_plot = df.copy()
     df_plot["Status Alfabetização"] = df_plot[TARGET_COLUMN].map({1: "Alfabetizado", 0: "Não Alfabetizado"})
     palette = {"Alfabetizado": "#2ecc71", "Não Alfabetizado": "#e74c3c"}
     
-    sns.boxplot(data=df_plot, x="Status Alfabetização", y="frequencia_escolar", hue="Status Alfabetização", ax=axes[0], palette=palette, legend=False, boxprops=dict(alpha=0.8))
-    axes[0].set_title("Frequência Escolar (%)")
+    col_edu = "escola_percentual_presenca" if "escola_percentual_presenca" in df_plot.columns else num_cols[0]
+    sns.boxplot(data=df_plot, x="Status Alfabetização", y=col_edu, hue="Status Alfabetização", ax=axes[0], palette=palette, legend=False, boxprops=dict(alpha=0.8))
+    axes[0].set_title("Presença Real dos Alunos da Escola (%)")
     axes[0].set_ylabel("Presença (%)")
     axes[0].set_xlabel("")
     
-    sns.boxplot(data=df_plot[df_plot["renda_per_capita_reais"] < 3500], x="Status Alfabetização", y="renda_per_capita_reais", hue="Status Alfabetização", ax=axes[1], palette=palette, legend=False, boxprops=dict(alpha=0.8))
-    axes[1].set_title("Renda Familiar Per Capita (R$)")
-    axes[1].set_ylabel("Renda (R$)")
+    col_socio = "bf_beneficio_medio" if "bf_beneficio_medio" in df_plot.columns else num_cols[1]
+    sns.boxplot(data=df_plot, x="Status Alfabetização", y=col_socio, hue="Status Alfabetização", ax=axes[1], palette=palette, legend=False, boxprops=dict(alpha=0.8))
+    axes[1].set_title("Benefício Médio Bolsa Família Municipal (R$)")
+    axes[1].set_ylabel("Valor Médio (R$)")
     axes[1].set_xlabel("")
     
-    sns.boxplot(data=df_plot, x="Status Alfabetização", y="ivs_territorial", hue="Status Alfabetização", ax=axes[2], palette=palette, legend=False, boxprops=dict(alpha=0.8))
-    axes[2].set_title("Índice de Vulnerabilidade Social (IVS)")
-    axes[2].set_ylabel("IVS Municipal")
+    col_terr = "escola_percentual_nao_alfabetizado" if "escola_percentual_nao_alfabetizado" in df_plot.columns else num_cols[2]
+    sns.boxplot(data=df_plot, x="Status Alfabetização", y=col_terr, hue="Status Alfabetização", ax=axes[2], palette=palette, legend=False, boxprops=dict(alpha=0.8))
+    axes[2].set_title("Taxa de Não Alfabetização da Escola (%)")
+    axes[2].set_ylabel("Não Alfabetizados (%)")
     axes[2].set_xlabel("")
     
-    plt.suptitle("Determinantes Educacionais e Socioeconômicos da Alfabetização", fontsize=15, y=1.02)
+    plt.suptitle("Determinantes Escolares e Socioeconômicos Reais da Alfabetização", fontsize=15, y=1.02)
     plt.tight_layout()
     for dest in [FIGURES_DIR / "eda_02_fatores_socioeconomicos.png", IMAGES_DIR / "eda_02_fatores_socioeconomicos.png"]:
         plt.savefig(dest, dpi=300)

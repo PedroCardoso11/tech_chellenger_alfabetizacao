@@ -27,7 +27,6 @@ def get_candidate_models(scale_pos_weight: float = 1.0) -> Dict[str, Any]:
     """
     models = {
         "Baseline_Logistic_Regression": LogisticRegression(
-            penalty="l2",
             C=1.0,
             solver="lbfgs",
             class_weight="balanced",

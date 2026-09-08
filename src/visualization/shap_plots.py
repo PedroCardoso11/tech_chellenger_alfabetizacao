@@ -90,11 +90,11 @@ def explain_model_with_shap(
 def _classify_domain(feature_name: str) -> str:
     """Classifica uma feature entre Educacional, Territorial ou Socioeconômico."""
     feat_lower = feature_name.lower()
-    if any(k in feat_lower for k in ["freq", "docente", "turma", "hora", "infra", "rede", "escola", "engajamento"]):
+    if any(k in feat_lower for k in ["rede", "escola", "engajamento", "peso_aluno", "caderno", "docente"]):
         return "Educacional"
-    elif any(k in feat_lower for k in ["uf", "regiao", "porte", "localizacao", "ivs_terr", "creche", "rural", "urbana"]):
+    elif any(k in feat_lower for k in ["uf", "regiao", "mun_", "meta", "desvio_padrao", "amplitude"]):
         return "Territorial"
-    elif any(k in feat_lower for k in ["renda", "bolsa", "familia", "mae", "livro", "comp", "internet", "vuln", "cultural"]):
+    elif any(k in feat_lower for k in ["bolsa", "familia", "beneficiario", "bf_", "valor_total", "renda"]):
         return "Socioeconômico"
     else:
         return "Educacional"

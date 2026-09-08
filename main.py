@@ -100,18 +100,18 @@ def run_full_ml_pipeline():
     print("\n" + "=" * 80)
     print(" RELATÓRIO EXECUTIVO & RECOMENDAÇÕES PARA POLÍTICAS PÚBLICAS EDUCACIONAIS")
     print("=" * 80)
-    print("""
-1. DESEMPENHO E GENERALIZAÇÃO DO MODELO:
-   - Validação cruzada estratificada em 5 folds com Zero Data Leakage garantiu alta estabilidade.
-   - O modelo LightGBM Otimizado atingiu ROC-AUC superior a 0.88 e PR-AUC de 0.95 no teste holdout.
+    print(f"""
+1. DESEMPENHO E GENERALIZAÇÃO DO MODELO (100% DADOS REAIS):
+   - Validação cruzada estratificada em 5 folds com Zero Data Leakage garantiu alta consistência.
+   - O modelo LightGBM Otimizado atingiu ROC-AUC de {test_metrics_df.loc[test_metrics_df['Modelo']=='LightGBM_Optimized', 'ROC-AUC'].values[0]:.4f} e PR-AUC de {test_metrics_df.loc[test_metrics_df['Modelo']=='LightGBM_Optimized', 'PR-AUC'].values[0]:.4f} no teste holdout.
 
 2. GESTÃO DO RISCO SOCIAL (FALSOS NEGATIVOS vs FALSOS POSITIVOS):
    - Ao calibrar o limiar de corte de 0.50 para o limiar social ótimo (Max F2-Score), foi possível
-     elevar expressivamente a capacidade de identificação precoce de crianças em risco.
+     elevar a identificação precoce de crianças em risco para {threshold_results['optimal_recall_risk']*100:.1f}%.
 
 3. PRINCIPAIS DETERMINANTES DA ALFABETIZAÇÃO (INSIGHTS SHAP):
-   - A Frequência Escolar e o Índice de Vulnerabilidade Familiar representam os maiores pesos.
-   - A presença de infraestrutura pedagógica (bibliotecas e banda larga) atua como barreira protetiva.
+   - O percentual histórico de não alfabetização e a presença dos alunos da escola concentram o maior impacto explicativo.
+   - A distância para a meta pactuada no município e o benefício médio do Bolsa Família complementam a estratificação de risco social.
     """)
     print(f"Artefatos visuais salvos em: {FIGURES_DIR} e {IMAGES_DIR}")
     print(f"Sumário de métricas salvo em: {REPORTS_DIR / 'metrics_summary.json'}")
