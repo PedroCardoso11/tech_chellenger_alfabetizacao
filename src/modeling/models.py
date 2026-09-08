@@ -86,14 +86,14 @@ def create_full_pipeline(classifier: Any, feature_dict: dict) -> Pipeline:
 
 def evaluate_models_cross_validation(
     models: Dict[str, Any],
-    X_train: pd.DataFrame,
+    X_train: Any,
     y_train: np.ndarray,
-    feature_dict: dict,
+    feature_dict: dict = None,
     n_splits: int = N_SPLITS_CV
 ) -> pd.DataFrame:
     """
     Executa Validação Cruzada Estratificada (Stratified 5-Fold CV) com Pipeline integrado
-    para garantir ausência absoluta de vazamento de dados entre os folds de treino e validação.
+    ou estimador pré-processado garantindo ausência de vazamento de dados.
     """
     print("\n" + "=" * 70)
     print(" 3. MODELAGEM & VALIDAÇÃO CRUZADA ESTRATIFICADA (5-FOLD CV ZERO LEAKAGE)")
@@ -114,7 +114,10 @@ def evaluate_models_cross_validation(
     
     for name, model in models.items():
         print(f"[MODELING] Treinando e validando via Pipeline CV: {name:<30} ...", end="", flush=True)
-        pipeline = create_full_pipeline(model, feature_dict)
+        if feature_dict is not None and isinstance(X_train, pd.DataFrame):
+            pipeline = create_full_pipeline(model, feature_dict)
+        else:
+            pipeline = model
         
         scores = cross_validate(
             pipeline,
@@ -149,22 +152,26 @@ def evaluate_models_cross_validation(
 
 def fit_and_save_all_models(
     models: Dict[str, Any],
-    X_train: pd.DataFrame,
+    X_train: Any,
     y_train: np.ndarray,
-    feature_dict: dict
-) -> Dict[str, Pipeline]:
+    feature_dict: dict = None
+) -> Dict[str, Any]:
     """
-    Ajusta todos os pipelines de modelos no conjunto de treino completo e salva os artefatos binários.
+    Ajusta todos os modelos no conjunto de treino completo e salva os artefatos binários.
     """
     trained_pipelines = {}
     print("\n[MODELING] Ajustando Pipelines completos no conjunto de treino (Treino 80%)...")
     
     for name, model in models.items():
-        pipeline = create_full_pipeline(model, feature_dict)
+        if feature_dict is not None and isinstance(X_train, pd.DataFrame):
+            pipeline = create_full_pipeline(model, feature_dict)
+        else:
+            pipeline = model
+            
         pipeline.fit(X_train, y_train)
         trained_pipelines[name] = pipeline
         
-        # Salvar pipeline treinado completo
+        # Salvar modelo treinado
         model_path = MODELS_DIR / f"{name.lower()}.joblib"
         joblib.dump(pipeline, model_path)
         

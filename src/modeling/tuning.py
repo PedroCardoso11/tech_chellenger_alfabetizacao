@@ -21,19 +21,18 @@ optuna.logging.set_verbosity(optuna.logging.WARNING)
 
 
 def tune_lightgbm_optuna(
-    X_train: pd.DataFrame,
+    X_train: Any,
     y_train: np.ndarray,
-    feature_dict: dict,
+    feature_dict: Any = None,
     n_trials: int = N_OPTUNA_TRIALS
-) -> Tuple[Pipeline, Dict[str, Any], float]:
+) -> Tuple[Any, Dict[str, Any], float]:
     """
-    Otimiza hiperparâmetros do LightGBM usando Optuna com validação cruzada 5-fold sobre o Pipeline completo.
-    
-    Returns:
-        best_pipeline: Pipeline com pré-processador e classificador ajustado com hiperparâmetros ótimos.
-        best_params: Dicionário com os hiperparâmetros ótimos.
-        best_score: Melhor ROC-AUC médio obtido na validação cruzada.
+    Otimiza hiperparâmetros do LightGBM usando Optuna com validação cruzada 5-fold.
     """
+    if isinstance(feature_dict, int):
+        n_trials = feature_dict
+        feature_dict = None
+
     print("\n" + "=" * 70)
     print(" 3.1 OTIMIZAÇÃO DE HIPERPARÂMETROS VIA OPTUNA (PIPELINE BAYESIAN SEARCH)")
     print("=" * 70)
@@ -59,8 +58,12 @@ def tune_lightgbm_optuna(
         }
         
         clf = LGBMClassifier(**params)
-        pipeline = create_full_pipeline(clf, feature_dict)
-        scores = cross_val_score(pipeline, X_train, y_train, cv=cv, scoring="roc_auc", n_jobs=None)
+        if feature_dict is not None and isinstance(X_train, pd.DataFrame):
+            estimator = create_full_pipeline(clf, feature_dict)
+        else:
+            estimator = clf
+            
+        scores = cross_val_score(estimator, X_train, y_train, cv=cv, scoring="roc_auc", n_jobs=None)
         return scores.mean()
     
     study = optuna.create_study(direction="maximize", sampler=optuna.samplers.TPESampler(seed=RANDOM_STATE))
@@ -78,7 +81,7 @@ def tune_lightgbm_optuna(
         else:
             print(f"      * {k:<20}: {v}")
             
-    # Treinar pipeline final otimizado no conjunto completo de treino
+    # Treinar estimador final otimizado no conjunto completo de treino
     best_params_full = {
         **best_params,
         "class_weight": "balanced",
@@ -87,13 +90,16 @@ def tune_lightgbm_optuna(
         "verbose": -1
     }
     best_clf = LGBMClassifier(**best_params_full)
-    best_pipeline = create_full_pipeline(best_clf, feature_dict)
+    if feature_dict is not None and isinstance(X_train, pd.DataFrame):
+        best_pipeline = create_full_pipeline(best_clf, feature_dict)
+    else:
+        best_pipeline = best_clf
+        
     best_pipeline.fit(X_train, y_train)
     
     # Salvar modelo otimizado
-    model_path = MODELS_DIR / "lightgbm_optimized.joblib"
-    joblib.dump(best_pipeline, model_path)
-    print(f"[TUNING] Pipeline otimizado salvo em: {model_path}")
+    opt_model_path = MODELS_DIR / "lightgbm_optimized.joblib"
+    joblib.dump(best_pipeline, opt_model_path)
+    print(f"[TUNING] Pipeline otimizado salvo em: {opt_model_path}")
     
-    return best_pipeline, best_params_full, best_score
-
+    return best_pipeline, best_params, best_score

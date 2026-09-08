@@ -36,16 +36,25 @@ def explain_model_with_shap(
     idx_sample = np.random.choice(X_test_raw.shape[0], size=n_samples, replace=False)
     X_sample_raw = X_test_raw.iloc[idx_sample].copy()
     
-    # Extrair etapas do Pipeline
-    fe = best_pipeline.named_steps["feature_engineer"]
-    preprocessor = best_pipeline.named_steps["preprocessor"]
-    classifier = best_pipeline.named_steps["classifier"]
-    
-    # Transformar dados para a entrada do estimador em árvore
-    X_sample_fe = fe.transform(X_sample_raw)
-    X_sample_proc = preprocessor.transform(X_sample_fe)
-    
-    feature_names = extract_transformed_feature_names(preprocessor, feature_dict)
+    # Extrair etapas caso seja um Pipeline ou estimador direto
+    if hasattr(best_pipeline, "named_steps") and "feature_engineer" in best_pipeline.named_steps:
+        fe = best_pipeline.named_steps["feature_engineer"]
+        preprocessor = best_pipeline.named_steps["preprocessor"]
+        classifier = best_pipeline.named_steps["classifier"]
+        X_sample_fe = fe.transform(X_sample_raw)
+        X_sample_proc = preprocessor.transform(X_sample_fe)
+        if isinstance(feature_dict, list):
+            feature_names = feature_dict
+        else:
+            feature_names = extract_transformed_feature_names(preprocessor, feature_dict)
+    else:
+        classifier = best_pipeline
+        X_sample_proc = X_sample_raw if isinstance(X_sample_raw, np.ndarray) else X_sample_raw.values
+        if isinstance(feature_dict, list):
+            feature_names = feature_dict
+        else:
+            feature_names = [f"feature_{i}" for i in range(X_sample_proc.shape[1])]
+            
     df_sample = pd.DataFrame(X_sample_proc, columns=feature_names)
     
     print(f"[SHAP] Calculando valores SHAP via TreeExplainer ({n_samples:,} amostras)...")

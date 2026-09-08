@@ -150,8 +150,25 @@ def extract_transformed_feature_names(fitted_preprocessor: ColumnTransformer, fe
 
 def split_and_preprocess_data(df: pd.DataFrame, test_size: float = TEST_SIZE, seed: int = RANDOM_STATE):
     """
-    Função utilitária para divisão estratificada treino/teste com Zero Data Leakage.
+    Divide treino e teste e aplica o pré-processador isolado no treino (Zero Data Leakage).
+    Retorna X_train_proc, X_test_proc, y_train, y_test, feature_names, preprocessor.
     """
-    X = df.drop(columns=[TARGET_COLUMN])
+    X_raw = df.drop(columns=[TARGET_COLUMN])
     y = df[TARGET_COLUMN].values
-    return train_test_split(X, y, test_size=test_size, stratify=y, random_state=seed)
+    
+    X_train_raw, X_test_raw, y_train, y_test = train_test_split(
+        X_raw, y, test_size=test_size, stratify=y, random_state=seed
+    )
+    
+    feature_dict = build_feature_dictionary(list(X_raw.columns))
+    fe = EducationFeatureEngineer()
+    X_train_fe = fe.transform(X_train_raw)
+    X_test_fe = fe.transform(X_test_raw)
+    
+    preprocessor = build_preprocessor_pipeline(feature_dict)
+    X_train_proc = preprocessor.fit_transform(X_train_fe)
+    X_test_proc = preprocessor.transform(X_test_fe)
+    
+    feature_names = extract_transformed_feature_names(preprocessor, feature_dict)
+    
+    return X_train_proc, X_test_proc, y_train, y_test, feature_names, preprocessor
